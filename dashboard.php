@@ -104,5 +104,46 @@ if (isset($_POST['save'])) {
 
         <?php if ($message) echo "<p style='color: green;'>$message</p>"; ?>
     </div>
+	
+	<hr>
+<h3>3. Jūsų išsaugoti slaptažodžiai</h3>
+<table border="1" cellpadding="10" style="width: 100%; border-collapse: collapse; background: white; border: 1px solid #ddd;">
+    <tr style="background: #007bff; color: white;">
+        <th align="left">Paslauga / Svetainė</th>
+        <th align="left">Slaptažodis</th>
+    </tr>
+
+    <?php
+    // 1. Atkoduojame pagrindinį RAKTĄ (Master Key) naudodami sesijos slaptažodį
+    $stmtKey = $db->prepare("SELECT encrypted_key FROM users WHERE id = ?");
+    $stmtKey->execute([$_SESSION['user_id']]);
+    $uData = $stmtKey->fetch();
+    
+    $masterKey = $cipher->decrypt($uData['encrypted_key'], $_SESSION['user_plain_password']);
+
+    // 2. Ištraukiame visus vartotojo slaptažodžius
+    $stmtPass = $db->prepare("SELECT service_name, encrypted_password FROM passwords WHERE user_id = ?");
+    $stmtPass->execute([$_SESSION['user_id']]);
+    $savedPasswords = $stmtPass->fetchAll();
+
+    if (count($savedPasswords) > 0):
+        foreach ($savedPasswords as $row): 
+            // 3. Atkoduojame svetainės slaptažodį
+            $decryptedPass = $cipher->decrypt($row['encrypted_password'], $masterKey);
+        ?>
+        <tr>
+            <td style="border-bottom: 1px solid #ddd;"><?php echo htmlspecialchars($row['service_name']); ?></td>
+            <td style="border-bottom: 1px solid #ddd; color: #28a745; font-weight: bold; font-family: monospace;">
+                <?php echo htmlspecialchars($decryptedPass); ?>
+            </td>
+        </tr>
+        <?php endforeach; 
+    else: ?>
+        <tr>
+            <td colspan="2" align="center">Sąrašas tuščias. Sugeneruokite ir išsaugokite savo pirmąjį slaptažodį viršuje.</td>
+        </tr>
+    <?php endif; ?>
+</table>
+	
 </body>
 </html>
